@@ -312,7 +312,7 @@ def set_perf_optimization_configs(
         # Disable local gradient checker at non-debugging mode
         recipe.trainer.strategy.ddp.check_for_nan_in_grad = False
         recipe.trainer.strategy.ddp.check_for_large_grads = False
-        recipe.trainer.strategy.ddp.nccl_ub = bool(use_user_buffer_registration)
+        # recipe.trainer.strategy.ddp.nccl_ub = bool(use_user_buffer_registration)
         recipe.trainer.strategy.ddp.fsdp_double_buffer = bool(use_fsdp_double_buffer)
 
     return recipe
