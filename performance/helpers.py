@@ -22,7 +22,6 @@ from numpy import nan
 
 from nemo.collections.llm.gpt.data.mock import MockDataModule
 from nemo.collections.llm.recipes.precision.mixed_precision import (
-    bf16_with_fp8_current_scaling_mixed,
     bf16_with_fp8_mixed,
     bf16_with_fp8_subchannel_scaling_mixed,
     bf16_with_mxfp8_mixed,
@@ -187,10 +186,10 @@ def set_precision_configs(recipe, compute_dtype: str, fp8_recipe: str | None = N
             fp8_recipe = "ds"
         if fp8_recipe.lower() == "ds":
             recipe.trainer.plugins = bf16_with_fp8_mixed()
-        elif fp8_recipe.lower() == "cs":
-            recipe.trainer.plugins = bf16_with_fp8_current_scaling_mixed()
-            # disable first/last layer bf16 for benchmarking
-            recipe.trainer.plugins.first_last_layers_bf16 = False
+        # elif fp8_recipe.lower() == "cs":
+        #     recipe.trainer.plugins = bf16_with_fp8_current_scaling_mixed()
+        #     # disable first/last layer bf16 for benchmarking
+        #     recipe.trainer.plugins.first_last_layers_bf16 = False
         elif fp8_recipe.lower() == "mxfp8":
             recipe.trainer.plugins = bf16_with_mxfp8_mixed()
         elif fp8_recipe.lower() == "ss":
