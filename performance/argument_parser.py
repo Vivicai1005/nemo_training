@@ -26,20 +26,20 @@ def parse_cli_args():
     """
     parser = argparse.ArgumentParser(description="NeMo2.0 Performance Pretraining and Fine-Tuning")
 
-    parser.add_argument(
-        "-a",
-        "--account",
-        type=str,
-        help="Slurm account to use for experiment",
-        required=True,
-    )
-    parser.add_argument(
-        "-p",
-        "--partition",
-        type=str,
-        help="Slurm partition to use for experiment",
-        required=True,
-    )
+    # parser.add_argument(
+    #     "-a",
+    #     "--account",
+    #     type=str,
+    #     help="Slurm account to use for experiment",
+    #     required=True,
+    # )
+    # parser.add_argument(
+    #     "-p",
+    #     "--partition",
+    #     type=str,
+    #     help="Slurm partition to use for experiment",
+    #     required=True,
+    # )
     parser.add_argument(
         "-g",
         "--gpu",
