@@ -106,7 +106,7 @@ def local_executor_torchrun(gpu: str,
         PERF_ENV_VARS.update({"HF_TOKEN": hf_token, "TRANSFORMERS_OFFLINE": "0"})
 
 
-    executor = run.LocalExecutor(nodes=nodes,
+    executor = run.LocalExecutor(
                                  ntasks_per_node=num_gpus_per_node,
                                  launcher="torchrun",
                                  env_vars=PERF_ENV_VARS,
