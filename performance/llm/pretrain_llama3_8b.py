@@ -18,7 +18,6 @@ import nemo_run as run
 from nemo.collections.llm.recipes.llama3_8b import pretrain_recipe
 from nemo.collections.nlp.modules.common.tokenizer_utils import get_nmt_tokenizer
 from nemo.lightning.run.plugins import MemoryProfilePlugin, NsysPlugin, PerfEnvPlugin
-from nemo.lightning.base import DEFAULT_NEMO_CACHE_HOME
 
 from ..argument_parser import parse_cli_args
 from ..executors import local_executor_torchrun
