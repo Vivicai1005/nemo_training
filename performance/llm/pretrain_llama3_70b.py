@@ -25,7 +25,6 @@ from ..helpers import args_sanity_check, get_user_configs, set_exp_logging_confi
 from ..utils import hf_tokenizer
 
 
-
 def override_recipe_configs(
     args: str,
     num_nodes: int,
@@ -37,10 +36,12 @@ def override_recipe_configs(
     vp_size: int,
     ep_size: int,
     enable_cuda_graphs: bool,
+    use_mcore_fsdp: bool,
+    recompute_layers: int,
+    activation_offload_layers: int,
 ):
     """
-    llama3 8b pre-train recipe aimed at achieving best possible performance and faster
-    overall runtime.
+    llama3 70b pre-train recipe aimed at achieving best possible performance.
 
     NOTE: Use fp8 precision training with caution. It might not give desirable results.
     """
@@ -59,17 +60,21 @@ def override_recipe_configs(
         vp_size,
         ep_size,
         enable_cuda_graphs=enable_cuda_graphs,
+        use_mcore_fsdp=use_mcore_fsdp,
+        use_user_buffer_registration=args.use_user_buffer_registration,
+        use_fsdp_double_buffer=args.use_fsdp_double_buffer,
+        use_sharp=args.use_sharp,
+        recompute_layers=recompute_layers,
+        activation_offload_layers=activation_offload_layers,
         compute_dtype=args.compute_dtype,
         fp8_recipe=args.fp8_recipe,
         nccl_communicator_config_path=args.nccl_communicator_config_path,
-        use_mcore_fsdp=args.use_mcore_fsdp,
-        use_fsdp_double_buffer=args.use_fsdp_double_buffer,
-        use_user_buffer_registration=args.use_user_buffer_registration,
-        use_sharp=args.use_sharp,
     )
     recipe = set_exp_logging_configs(
         recipe, "pre_train", "llm", "llama3", args.tensorboard, args.wandb, args.wandb_prj_name, args.wandb_job_name
     )
+
+    gpu_type = args.gpu.lower()
 
     # data module configs
     if args.use_hf_tokenizer:
@@ -80,6 +85,28 @@ def override_recipe_configs(
         )
         recipe.model.tokenizer = recipe.data.tokenizer
 
+    # ub_cfg = {
+    #     "h100": {
+    #         "bf16": userbuffers_bf16_h100_h8192_tp4_mbs1_seqlen8192,
+    #         "fp8": userbuffers_fp8_h100_h8192_tp4_mbs1_seqlen8192,
+    #     },
+    #     "b200": {
+    #         "bf16": userbuffers_bf16_b200_h8192_tp2_mbs1_seqlen8192,
+    #         "fp8": userbuffers_fp8_b200_h8192_tp2_mbs1_seqlen8192,
+    #     },
+    #     "gb200": {
+    #         "bf16": userbuffers_bf16_b200_h8192_tp2_mbs1_seqlen8192,
+    #         "fp8": userbuffers_fp8_b200_h8192_tp2_mbs1_seqlen8192,
+    #     },
+    # }
+    #
+    # comm_overlap_callback_idx = get_comm_overlap_callback_idx(recipe.trainer.callbacks)
+    # assert comm_overlap_callback_idx is not None, "MegatronCommOverlapCallback missing. Required for performance."
+    #
+    # tp_comm_overlap_cfg = ub_cfg[gpu_type][args.compute_dtype]
+    # # needed as tp_overlap_configs.userbuffers are dataclass objects which are unserializable
+    # tp_comm_overlap_cfg = fdl.cast(run.Config, fdl_dc.convert_dataclasses_to_configs(tp_comm_overlap_cfg))
+    # recipe.trainer.callbacks[comm_overlap_callback_idx].tp_comm_overlap_cfg = tp_comm_overlap_cfg
     return recipe
 
 
@@ -88,10 +115,36 @@ if __name__ == "__main__":
     args_sanity_check(args)
 
     kwargs = get_user_configs(args.gpu.lower(), "pre_train", "llama3", "70b", args)
-    num_nodes, mbs, gbs, tp_size, pp_size, cp_size, vp_size, ep_size, _, enable_cuda_graphs = kwargs[:10]
+    (
+        num_nodes,
+        mbs,
+        gbs,
+        tp_size,
+        pp_size,
+        cp_size,
+        vp_size,
+        ep_size,
+        _,
+        enable_cuda_graphs,
+        use_mcore_fsdp,
+        recompute_layers,
+        activation_offload_layers,
+    ) = kwargs[:13]
 
     recipe = override_recipe_configs(
-        args, num_nodes, mbs, gbs, tp_size, pp_size, cp_size, vp_size, ep_size, enable_cuda_graphs
+        args,
+        num_nodes,
+        mbs,
+        gbs,
+        tp_size,
+        pp_size,
+        cp_size,
+        vp_size,
+        ep_size,
+        enable_cuda_graphs,
+        use_mcore_fsdp,
+        recompute_layers,
+        activation_offload_layers,
     )
 
     exp_config = f"{num_nodes}nodes_tp{tp_size}_pp{pp_size}_cp{cp_size}_vp{vp_size}_{mbs}mbs_{gbs}gbs"
@@ -101,14 +154,14 @@ if __name__ == "__main__":
                                        num_nodes,
                                        args.gpus_per_node,
                                        args.hf_token)
+
     plugins = [
         PerfEnvPlugin(
             enable_vboost=True,
             nccl_pp_comm_chunksize=2097152 if pp_size > 1 else None,
             gpu_sm100_or_newer=(args.gpu.lower() in ['b200', 'gb200']),
-        ),
+        )
     ]
-
     if args.enable_nsys:
         plugins.append(NsysPlugin(start_step=5, end_step=6))
     if args.enable_memory_profile:
