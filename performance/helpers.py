@@ -22,7 +22,9 @@ from numpy import nan
 
 from nemo.collections.llm.gpt.data.mock import MockDataModule
 from nemo.collections.llm.recipes.precision.mixed_precision import (
+    bf16_with_fp8_current_scaling_mixed,
     bf16_with_fp8_mixed,
+    bf16_with_mxfp8_mixed,
 )
 from nemo.lightning.pytorch.callbacks.flops_callback import FLOPsMeasurementCallback
 from nemo.lightning.pytorch.callbacks.model_checkpoint import ModelCheckpoint
@@ -184,12 +186,12 @@ def set_precision_configs(recipe, compute_dtype: str, fp8_recipe: str | None = N
             fp8_recipe = "ds"
         if fp8_recipe.lower() == "ds":
             recipe.trainer.plugins = bf16_with_fp8_mixed()
-        # elif fp8_recipe.lower() == "cs":
-        #     recipe.trainer.plugins = bf16_with_fp8_current_scaling_mixed()
-        #     # disable first/last layer bf16 for benchmarking
-        #     recipe.trainer.plugins.first_last_layers_bf16 = False
-        # elif fp8_recipe.lower() == "mxfp8":
-        #     recipe.trainer.plugins = bf16_with_mxfp8_mixed()
+        elif fp8_recipe.lower() == "cs":
+            recipe.trainer.plugins = bf16_with_fp8_current_scaling_mixed()
+            # disable first/last layer bf16 for benchmarking
+            recipe.trainer.plugins.first_last_layers_bf16 = False
+        elif fp8_recipe.lower() == "mxfp8":
+            recipe.trainer.plugins = bf16_with_mxfp8_mixed()
         # elif fp8_recipe.lower() == "ss":
         #     recipe.trainer.plugins = bf16_with_fp8_subchannel_scaling_mixed()
 
@@ -312,8 +314,8 @@ def set_perf_optimization_configs(
         # Disable local gradient checker at non-debugging mode
         recipe.trainer.strategy.ddp.check_for_nan_in_grad = False
         recipe.trainer.strategy.ddp.check_for_large_grads = False
-        # recipe.trainer.strategy.ddp.nccl_ub = bool(use_user_buffer_registration)
-        # recipe.trainer.strategy.ddp.fsdp_double_buffer = bool(use_fsdp_double_buffer)
+        recipe.trainer.strategy.ddp.nccl_ub = bool(use_user_buffer_registration)
+        recipe.trainer.strategy.ddp.fsdp_double_buffer = bool(use_fsdp_double_buffer)
 
     return recipe
 
