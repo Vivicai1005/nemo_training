@@ -3,7 +3,23 @@ import nemo_run as run
 from nemo.collections import llm
 from nemo.collections.llm.recipes.precision.mixed_precision import bf16_with_fp8_mixed
 from nemo.utils import logging
-from performance.utils import get_comm_overlap_callback_idx
+
+from typing import List
+from nemo.collections.llm.recipes.llama3_8b import MegatronCommOverlapCallback
+from lightning.pytorch.callbacks.callback import Callback
+
+def get_comm_overlap_callback_idx(callbacks: List[Callback]) -> int | None:
+    """
+    nemo.lightning.Trainer has a list of callbacks defined. This method identifies index of MegatronCommOverlapCallback
+    from the list defined in recipes in nemo.collections.llm.recipes. The index is needed to override ddp communication
+    params
+    """
+    if callbacks:  # default is None in lightning
+        for idx, callback in enumerate(callbacks):
+            if callback.__fn_or_cls__ == MegatronCommOverlapCallback:
+                return idx
+    return None
+
 
 def local_executor_torchrun(nodes: int = 1, devices: int = 2) -> run.LocalExecutor:
     # Env vars for jobs are configured here
