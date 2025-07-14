@@ -14,8 +14,8 @@
 
 from os.path import basename, splitext
 
-import fiddle as fdl
-import fiddle._src.experimental.dataclasses as fdl_dc
+# import fiddle as fdl
+# import fiddle._src.experimental.dataclasses as fdl_dc
 import nemo_run as run
 
 from nemo.collections.llm.recipes.llama3_70b import pretrain_recipe
