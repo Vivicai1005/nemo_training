@@ -97,6 +97,11 @@ def local_executor_torchrun(gpu: str,
         "NEMO_LOG_MEMORY_USAGE": "1",  # Print memory allocation
     }
 
+    if gpu.lower() not in ['b200']:
+        # TODO: we currently disable PYTORCH_CUDA_ALLOC_CONF="expandable_segments:True"
+        # on B200 as it causes an unexpected error. Add back when issue is debugged and fixed.
+        PERF_ENV_VARS["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
+
     if hf_token is not None:
         PERF_ENV_VARS.update({"HF_TOKEN": hf_token, "TRANSFORMERS_OFFLINE": "0"})
 
