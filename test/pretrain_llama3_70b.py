@@ -30,7 +30,7 @@ def run_pretraining():
     recipe.data.global_batch_size=16
     recipe.data.micro_batch_size=1
     recipe.data.seq_length = 2048
-    recipe.trainer.plugins = bf16_with_fp8_mixed()
+    #recipe.trainer.plugins = bf16_with_fp8_mixed()
 
 
     executor = local_executor_torchrun(nodes=recipe.trainer.num_nodes, devices=recipe.trainer.devices)
