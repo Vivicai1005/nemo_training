@@ -50,8 +50,8 @@ def run_pretraining():
     recipe.data.seq_length = 2048
     recipe.trainer.plugins = bf16_with_fp8_mixed()
     recipe.trainer.plugins.grad_reduce_in_fp32 = False
-    recipe.trainer.strategy.ddp.reuse_grad_buf_for_mxfp8_param_ag = True
-    recipe.optim.config.reuse_grad_buf_for_mxfp8_param_ag = True
+    # recipe.trainer.strategy.ddp.reuse_grad_buf_for_mxfp8_param_ag = True
+    # recipe.optim.config.reuse_grad_buf_for_mxfp8_param_ag = True
     comm_overlap_callback_idx = get_comm_overlap_callback_idx(recipe.trainer.callbacks)
     if comm_overlap_callback_idx is not None:
         recipe.trainer.callbacks[comm_overlap_callback_idx].overlap_param_gather = False
