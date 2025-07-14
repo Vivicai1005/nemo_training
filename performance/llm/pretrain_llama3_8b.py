@@ -13,12 +13,12 @@
 # limitations under the License.
 
 from os.path import basename, splitext
-
 import nemo_run as run
 
 from nemo.collections.llm.recipes.llama3_8b import pretrain_recipe
 from nemo.collections.nlp.modules.common.tokenizer_utils import get_nmt_tokenizer
 from nemo.lightning.run.plugins import MemoryProfilePlugin, NsysPlugin, PerfEnvPlugin
+from nemo.lightning.base import DEFAULT_NEMO_CACHE_HOME
 
 from ..argument_parser import parse_cli_args
 from ..helpers import args_sanity_check, get_user_configs, set_exp_logging_configs, set_primary_perf_configs
@@ -82,16 +82,30 @@ def override_recipe_configs(
 
     return recipe
 
-def local_executor_torchrun(nodes: int = 1, devices: int = 2) -> run.LocalExecutor:
+def local_executor_torchrun(gpu: str,
+                            nodes: int,
+                            num_gpus_per_node: int,
+                            hf_token: str = None) -> run.LocalExecutor:
     # Env vars for jobs are configured here
-    env_vars = {
-        "TORCH_NCCL_AVOID_RECORD_STREAMS": "1",
-        "NCCL_NVLS_ENABLE": "0",
-        "NVTE_DP_AMAX_REDUCE_INTERVAL": "0",
-        "NVTE_ASYNC_AMAX_REDUCTION": "1",
+    PERF_ENV_VARS = {
+        "TORCH_NCCL_AVOID_RECORD_STREAMS": "1",  # Disable caching NCCL communication buffer memory
+        "TRANSFORMERS_OFFLINE": "1",  # Enable online downloads from HuggingFace
+        "TOKENIZERS_PARALLELISM": "False",  # Restrict warning message prints
+        "NCCL_NVLS_ENABLE": "0",  # Disable NVLink SHARP to save memory
+        "NVTE_FLASH_ATTN": "1",  # Enable Flash Attention, which is needed to enable cuDNN fused attention
+        "NVTE_FUSED_ATTN": "1",  # Enable cuDNN fused attention
+        "NEMO_LOG_MEMORY_USAGE": "1",  # Print memory allocation
     }
 
-    executor = run.LocalExecutor(ntasks_per_node=devices, launcher="torchrun", env_vars=env_vars)
+    if hf_token is not None:
+        PERF_ENV_VARS.update({"HF_TOKEN": hf_token, "TRANSFORMERS_OFFLINE": "0"})
+
+
+    executor = run.LocalExecutor(nodes=nodes,
+                                 ntasks_per_node=num_gpus_per_node,
+                                 launcher="torchrun",
+                                 env_vars=PERF_ENV_VARS,
+                                 )
 
     return executor
 
@@ -110,30 +124,10 @@ if __name__ == "__main__":
     exp_config = f"{num_nodes}nodes_tp{tp_size}_pp{pp_size}_cp{cp_size}_vp{vp_size}_{mbs}mbs_{gbs}gbs"
     exp_name = f"{splitext(basename(__file__))[0]}_{args.compute_dtype}_{exp_config}"
 
-    # executor = slurm_executor(
-    #     args.gpu.lower(),
-    #     args.account,
-    #     args.partition,
-    #     args.log_dir,
-    #     num_nodes,
-    #     args.gpus_per_node,
-    #     args.time_limit,
-    #     args.container_image,
-    #     custom_mounts=args.custom_mounts,
-    #     custom_env_vars={},
-    #     hf_token=args.hf_token,
-    #     nemo_home=args.nemo_home,
-    #     wandb_key=args.wandb_key,
-    #     network='sharp' if args.use_sharp else None,
-    # )
-    env_vars = {
-        "TORCH_NCCL_AVOID_RECORD_STREAMS": "1",
-        "NCCL_NVLS_ENABLE": "0",
-        "NVTE_DP_AMAX_REDUCE_INTERVAL": "0",
-        "NVTE_ASYNC_AMAX_REDUCTION": "1",
-    }
-    executor = run.LocalExecutor(ntasks_per_node=args.gpus_per_node, launcher="torchrun", env_vars=env_vars)
-
+    executor = local_executor_torchrun(args.gpu.lower(),
+                                       num_nodes,
+                                       args.gpus_per_node,
+                                       args.hf_token)
     plugins = [
         PerfEnvPlugin(
             enable_vboost=True,
@@ -141,6 +135,7 @@ if __name__ == "__main__":
             gpu_sm100_or_newer=(args.gpu.lower() in ['b200', 'gb200']),
         ),
     ]
+
     if args.enable_nsys:
         plugins.append(NsysPlugin(start_step=5, end_step=6))
     if args.enable_memory_profile:

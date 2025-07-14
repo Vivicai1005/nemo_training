@@ -16,7 +16,7 @@ def local_executor_torchrun(nodes: int = 1, devices: int = 2) -> run.LocalExecut
     return executor
 
 def run_pretraining():
-    recipe = recipe = llm.llama3_8b.pretrain_recipe(
+    recipe = llm.llama3_8b.pretrain_recipe(
         dir="/checkpoints/llama3", # Path to store checkpoints
         name="llama3_pretraining",
         num_nodes=1,
