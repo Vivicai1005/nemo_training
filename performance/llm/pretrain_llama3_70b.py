@@ -85,6 +85,8 @@ def override_recipe_configs(
         )
         recipe.model.tokenizer = recipe.data.tokenizer
 
+    recipe.data.seq_length = 2048
+
     # ub_cfg = {
     #     "h100": {
     #         "bf16": userbuffers_bf16_h100_h8192_tp4_mbs1_seqlen8192,
