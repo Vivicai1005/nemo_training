@@ -2,6 +2,8 @@ import nemo_run as run
 
 from nemo.collections import llm
 from nemo.collections.llm.recipes.precision.mixed_precision import bf16_with_fp8_mixed
+from nemo.utils import logging
+from performance.utils import get_comm_overlap_callback_idx
 
 def local_executor_torchrun(nodes: int = 1, devices: int = 2) -> run.LocalExecutor:
     # Env vars for jobs are configured here
@@ -30,7 +32,17 @@ def run_pretraining():
     recipe.data.global_batch_size=16
     recipe.data.micro_batch_size=1
     recipe.data.seq_length = 2048
-    #recipe.trainer.plugins = bf16_with_fp8_mixed()
+    recipe.trainer.plugins = bf16_with_fp8_mixed()
+    recipe.trainer.plugins.grad_reduce_in_fp32 = False
+    recipe.trainer.strategy.ddp.reuse_grad_buf_for_mxfp8_param_ag = True
+    recipe.optim.config.reuse_grad_buf_for_mxfp8_param_ag = True
+    comm_overlap_callback_idx = get_comm_overlap_callback_idx(recipe.trainer.callbacks)
+    if comm_overlap_callback_idx is not None:
+        recipe.trainer.callbacks[comm_overlap_callback_idx].overlap_param_gather = False
+    logging.warning(
+        "When using MXFP8, to reduce memory usage, we use reuse_grad_buf_for_mxfp8_param_ag. "
+        "Disabling AG overlap because it is not supported with reuse_grad_buf_for_mxfp8_param_ag."
+    )
 
 
     executor = local_executor_torchrun(nodes=recipe.trainer.num_nodes, devices=recipe.trainer.devices)
