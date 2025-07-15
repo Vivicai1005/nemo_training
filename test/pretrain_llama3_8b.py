@@ -8,6 +8,18 @@ from nemo.collections.llm.recipes.precision.mixed_precision import bf16_with_fp8
 from nemo.lightning.pytorch.callbacks.flops_callback import FLOPsMeasurementCallback
 from nemo.utils import logging
 
+def get_comm_overlap_callback_idx(callbacks: List[Callback]) -> int | None:
+    """
+    nemo.lightning.Trainer has a list of callbacks defined. This method identifies index of MegatronCommOverlapCallback
+    from the list defined in recipes in nemo.collections.llm.recipes. The index is needed to override ddp communication
+    params
+    """
+    if callbacks:  # default is None in lightning
+        for idx, callback in enumerate(callbacks):
+            if callback.__fn_or_cls__ == MegatronCommOverlapCallback:
+                return idx
+    return None
+
 
 def local_executor_torchrun(nodes: int = 1, devices: int = 2) -> run.LocalExecutor:
     # Env vars for jobs are configured here
@@ -24,7 +36,7 @@ def local_executor_torchrun(nodes: int = 1, devices: int = 2) -> run.LocalExecut
 
 def run_pretraining():
     recipe = llm.llama3_8b.pretrain_recipe(
-        dir="/checkpoints/llama3", # Path to store checkpoints
+        dir="/checkpoints/llama3-8b", # Path to store checkpoints
         name="llama3_pretraining",
         num_nodes=1,
         num_gpus_per_node=8)
@@ -32,12 +44,16 @@ def run_pretraining():
     recipe.trainer.strategy.tensor_model_parallel_size = 1
     recipe.trainer.strategy.pipeline_model_parallel_size = 1
     recipe.trainer.strategy.context_parallel_size = 1
-    recipe.trainer.strategy.virtual_pipeline_model_parallel_size = None
+    recipe.trainer.strategy.virtual_pipeline_model_parallel_size = 1
     recipe.data.global_batch_size = 128
     recipe.data.micro_batch_size = 2
     recipe.data.seq_length = 8192
     recipe.trainer.plugins = bf16_with_fp8_mixed()
     recipe.trainer.plugins.grad_reduce_in_fp32 = False
+
+    comm_overlap_callback_idx = get_comm_overlap_callback_idx(recipe.trainer.callbacks)
+    if comm_overlap_callback_idx is not None:
+        recipe.trainer.callbacks[comm_overlap_callback_idx].overlap_param_gather = False
 
     recipe.trainer.callbacks.append(
         run.Config(
