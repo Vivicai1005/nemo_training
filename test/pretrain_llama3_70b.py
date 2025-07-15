@@ -42,7 +42,7 @@ def run_pretraining():
         name="llama3_pretraining",
         num_nodes=1,
         num_gpus_per_node=8)
-    recipe.trainer.strategy.tensor_model_parallel_size=1
+    recipe.trainer.strategy.tensor_model_parallel_size=4
     recipe.trainer.strategy.pipeline_model_parallel_size=1
     recipe.trainer.strategy.context_parallel_size=1
     recipe.trainer.strategy.virtual_pipeline_model_parallel_size=None
