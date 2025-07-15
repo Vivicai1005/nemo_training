@@ -48,8 +48,8 @@ def run_pretraining():
     recipe.trainer.strategy.virtual_pipeline_model_parallel_size=None
     recipe.data.global_batch_size=16
     recipe.data.micro_batch_size=1
-    recipe.data.seq_length = 4096
-    recipe.model.config.seq_length = 4096 # for flops calculation
+    recipe.data.seq_length = 8192
+    recipe.model.config.seq_length = 8192 # for flops calculation
     recipe.trainer.plugins = bf16_with_fp8_mixed()
     recipe.trainer.plugins.grad_reduce_in_fp32 = False
     # recipe.trainer.strategy.ddp.reuse_grad_buf_for_mxfp8_param_ag = True
