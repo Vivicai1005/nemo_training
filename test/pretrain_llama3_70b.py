@@ -45,7 +45,7 @@ def run_pretraining():
     recipe.trainer.strategy.tensor_model_parallel_size=2
     recipe.trainer.strategy.pipeline_model_parallel_size=4
     recipe.trainer.strategy.context_parallel_size=1
-    recipe.trainer.strategy.virtual_pipeline_model_parallel_size=1
+    recipe.trainer.strategy.virtual_pipeline_model_parallel_size=None
     recipe.data.global_batch_size=16
     recipe.data.micro_batch_size=1
     recipe.data.seq_length = 2048
