@@ -61,11 +61,13 @@ def run_pretraining():
         "Disabling AG overlap because it is not supported with reuse_grad_buf_for_mxfp8_param_ag."
     )
 
-    run.Config(
-        FLOPsMeasurementCallback,
-        model_config=recipe.model.config,
-        data_config=recipe.data,
-        model_name="llama3",
+    recipe.trainer.callbacks.append(
+        run.Config(
+            FLOPsMeasurementCallback,
+            model_config=recipe.model.config,
+            data_config=recipe.data,
+            model_name="llama3",
+        )
     )
 
     executor = local_executor_torchrun(nodes=recipe.trainer.num_nodes, devices=recipe.trainer.devices)
